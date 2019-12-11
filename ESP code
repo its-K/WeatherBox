@@ -1,0 +1,270 @@
+
+
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <ArduinoJson.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
+
+// Fill in your WiFi router SSID and password
+const char* ssid = "K";
+const char* password = "kingkise";
+String APIKEY = "84b9927477cbd1cd3f3cd586238f0fca";                                 
+String CityID = "1275339";
+
+WiFiClient client;
+char servername[]="api.openweathermap.org";              // remote server we will connect to
+String result;
+int  counter = 10;                                      
+
+  String weatherDescription ="";
+  String weatherLocation = "";
+  String Country;
+  float Temperature;
+  float Humidity;
+  float Pressure;
+  float Sunrise;
+  float Sunset;
+  float Speed;
+  float Temp_min;
+  float Temp_max;
+  float Visibility;
+  float Wind_angle;
+
+  
+MDNSResponder mdns;
+
+ESP8266WebServer server(80);
+
+const char INDEX_HTML[] =
+"<!DOCTYPE HTML>"
+"<html>"
+"<head>"
+"<meta name = \"viewport\" content = \"width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable=0\">"
+"<title>Weather Box</title>"
+"<style>"
+"\"body { background-color: #808080; font-family: Arial, Helvetica, Sans-Serif; Color: #000000; }\""
+"</style>"
+"</head>"
+"<body>"
+"<h1>ESP8266 Web Form Demo</h1>"
+"<FORM action=\"/\" method=\"post\">"
+"<P>"
+"Automode<br>"
+"<INPUT type=\"radio\" name=\"AUTOMODE\" value=\"1\">On<BR>"
+"<INPUT type=\"radio\" name=\"AUTOMODE\" value=\"0\">Off<BR>"
+"<input type='color' name='favcolor' value='#ff0000'><br><br>"
+"<input type='text' name='firstname' value=''>"
+"<INPUT type=\"submit\" value=\"Send\"> <INPUT type=\"reset\">"
+"</P>"
+"</FORM>"
+"</body>"
+"</html>";
+
+// GPIO#0 is for Adafruit ESP8266 HUZZAH board. Your board LED might be on 13.
+const int LEDPIN = 13;
+String inp;
+String LEDvalue="1";
+String color;
+unsigned long coun = 0;
+
+void handleRoot()
+{
+  if (server.hasArg("AUTOMODE")) {
+    handleSubmit();
+  }
+  else {
+    server.send(200, "text/html", INDEX_HTML);
+  }
+}
+
+void returnFail(String msg)
+{
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(500, "text/plain", msg + "\r\n");
+}
+
+void handleSubmit()
+{
+  LEDvalue = server.arg("AUTOMODE");
+  inp = server.arg("firstname");
+    color = server.arg("favcolor");
+  if (LEDvalue == "1") {
+    digitalWrite(LEDPIN, HIGH);
+    server.send(200, "text/html", INDEX_HTML);
+   
+    Serial.println("Led on");
+    automode();
+  }
+  else if (LEDvalue == "0") {
+    digitalWrite(LEDPIN, LOW);
+     Serial.println(inp);
+    Serial.println(color);
+    server.send(200, "text/html", INDEX_HTML);
+  }
+  else {
+    returnFail("Bad LED value");
+  }
+}
+
+void returnOK()
+{
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "text/plain", "OK\r\n");
+}
+
+void handleNotFound()
+{
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET)?"GET":"POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i=0; i<server.args(); i++){
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
+
+
+void setup(void)
+{
+  pinMode(LEDPIN, OUTPUT);
+  digitalWrite(LEDPIN, LOW);
+
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  if (mdns.begin("esp8266WebForm", WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+  }
+
+  server.on("/", handleRoot);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
+  Serial.print("Connect to http://esp8266WebForm.local or http://");
+  Serial.println(WiFi.localIP());
+}
+
+void loop(void)
+{
+  coun++;
+  server.handleClient();
+  if (LEDvalue == "1") {
+    automode();
+    
+  }
+}
+/////////////////////////////////////////////////////////////////////////Weather data read/////////////////////////////////////
+void automode()
+{
+    if(counter == 10)                                 //Get new data every 10 minutes
+    {
+      counter = 0;
+      delay(1000);
+      getWeatherData();
+      delay(1000);
+    }else
+    {
+      counter++;
+      displayWeather(weatherLocation,weatherDescription);
+       delay(1000);
+    }
+    }
+
+ void getWeatherData()                                //client function to send/receive GET request data.
+   {
+   if (client.connect(servername, 80))   
+          {                                         //starts client connection, checks for connection
+          client.println("GET /data/2.5/weather?id="+CityID+"&units=metric&APPID="+APIKEY);
+          client.println("Host: api.openweathermap.org");
+          client.println("User-Agent: ArduinoWiFi/1.1");
+          client.println("Connection: close");
+          client.println();
+          } 
+  else {
+         Serial.println("connection failed");        //error message if no client connect
+          Serial.println();
+       }
+
+  while(client.connected() && !client.available()) 
+  delay(1);                                          //waits for data
+  while (client.connected() || client.available())    
+       {                                             //connected or data available
+         char c = client.read();                     //gets byte from ethernet buffer
+         result = result+c;
+       }
+
+  client.stop();                                      //stop client
+  result.replace('[', ' ');
+  result.replace(']', ' ');
+  Serial.println(result);
+  char jsonArray [result.length()+1];
+  result.toCharArray(jsonArray,sizeof(jsonArray));
+  jsonArray[result.length() + 1] = '\0';
+  StaticJsonBuffer<1024> json_buf;
+  JsonObject &root = json_buf.parseObject(jsonArray);
+
+  if (!root.success())
+  {
+    Serial.println("parseObject() failed");
+  }
+
+  String location = root["name"];
+  String country = root["sys"]["country"];
+  float temperature = root["main"]["temp"];
+  float humidity = root["main"]["humidity"];
+  String weather = root["weather"]["main"];
+  String description = root["weather"]["description"];
+  float pressure = root["main"]["pressure"];
+  float sunrise = root["sys"]["sunrise"];
+  float sunset = root["sys"]["sunset"];
+  float temp_min = root["main"]["temp_min"];
+  float temp_max = root["main"]["temp_max"];
+  float speed = root["wind"]["speed"];
+  float visibility = root["visibility"];
+  float wind_angle = root["wind"]["deg"];
+  weatherDescription = description;
+  weatherLocation = location;
+  Country = country;
+  Temperature = temperature;
+  Humidity = humidity;
+  Pressure = pressure;
+  Sunrise = sunrise;
+  Sunset = sunset;
+  Speed = speed;
+  Temp_min = temp_min;
+  Temp_max = temp_max;
+  Visibility = visibility;
+  Wind_angle = wind_angle;
+ }
+
+void displayWeather(String location,String description)
+ {
+  
+  Serial.println(description);
+ 
+ }
