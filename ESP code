@@ -1,17 +1,9 @@
-
-
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <ArduinoJson.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
 
-
-// Fill in your WiFi router SSID and password
 const char* ssid = "K";
 const char* password = "kingkise";
 String APIKEY = "84b9927477cbd1cd3f3cd586238f0fca";                                 
@@ -26,19 +18,8 @@ int  counter = 10;
   String weatherLocation = "";
   String Country;
   float Temperature;
-  float Humidity;
-  float Pressure;
-  float Sunrise;
-  float Sunset;
-  float Speed;
-  float Temp_min;
-  float Temp_max;
-  float Visibility;
-  float Wind_angle;
-
-  
+    
 MDNSResponder mdns;
-
 ESP8266WebServer server(80);
 
 const char INDEX_HTML[] =
@@ -66,8 +47,8 @@ const char INDEX_HTML[] =
 "</body>"
 "</html>";
 
-// GPIO#0 is for Adafruit ESP8266 HUZZAH board. Your board LED might be on 13.
-const int LEDPIN = 13;
+
+const int LEDPIN = LED_BUILTIN;
 String inp;
 String LEDvalue="1";
 String color;
@@ -94,17 +75,15 @@ void handleSubmit()
 {
   LEDvalue = server.arg("AUTOMODE");
   inp = server.arg("firstname");
-    color = server.arg("favcolor");
+  color = server.arg("favcolor");
   if (LEDvalue == "1") {
-    digitalWrite(LEDPIN, HIGH);
+    digitalWrite(LEDPIN, LOW);
     server.send(200, "text/html", INDEX_HTML);
-   
     Serial.println("Led on");
-    automode();
   }
   else if (LEDvalue == "0") {
-    digitalWrite(LEDPIN, LOW);
-     Serial.println(inp);
+    digitalWrite(LEDPIN, HIGH);
+    Serial.println(inp);
     Serial.println(color);
     server.send(200, "text/html", INDEX_HTML);
   }
@@ -141,8 +120,8 @@ void setup(void)
 {
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(LEDPIN, LOW);
-
   Serial.begin(115200);
+  WiFi.softAPdisconnect();
   WiFi.begin(ssid, password);
   Serial.println("");
 
@@ -156,6 +135,7 @@ void setup(void)
   Serial.println(ssid);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  
 
   if (mdns.begin("esp8266WebForm", WiFi.localIP())) {
     Serial.println("MDNS responder started");
@@ -167,17 +147,19 @@ void setup(void)
   server.begin();
   Serial.print("Connect to http://esp8266WebForm.local or http://");
   Serial.println(WiFi.localIP());
+    
+
 }
 
 void loop(void)
 {
-  coun++;
   server.handleClient();
-  if (LEDvalue == "1") {
+  ESP.wdtFeed();
+  if(LEDvalue == "1") {
     automode();
-    
-  }
 }
+}
+
 /////////////////////////////////////////////////////////////////////////Weather data read/////////////////////////////////////
 void automode()
 {
@@ -197,6 +179,7 @@ void automode()
 
  void getWeatherData()                                //client function to send/receive GET request data.
    {
+    result="";
    if (client.connect(servername, 80))   
           {                                         //starts client connection, checks for connection
           client.println("GET /data/2.5/weather?id="+CityID+"&units=metric&APPID="+APIKEY);
@@ -221,50 +204,31 @@ void automode()
   client.stop();                                      //stop client
   result.replace('[', ' ');
   result.replace(']', ' ');
-  Serial.println(result);
-  char jsonArray [result.length()+1];
-  result.toCharArray(jsonArray,sizeof(jsonArray));
-  jsonArray[result.length() + 1] = '\0';
-  StaticJsonBuffer<1024> json_buf;
-  JsonObject &root = json_buf.parseObject(jsonArray);
-
-  if (!root.success())
-  {
-    Serial.println("parseObject() failed");
-  }
+  
+  Serial.printf("Res:%s\n", result.c_str());
+  delay(500);
+  
+ /////////////////////////////////////////////////
+const size_t capacity = JSON_ARRAY_SIZE(3) + 2 * JSON_OBJECT_SIZE(1) + JSON_OBJECT_SIZE(2) + 3 * JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(12) + 340;
+DynamicJsonDocument root(capacity);
+deserializeJson(root, result);
 
   String location = root["name"];
   String country = root["sys"]["country"];
   float temperature = root["main"]["temp"];
-  float humidity = root["main"]["humidity"];
   String weather = root["weather"]["main"];
   String description = root["weather"]["description"];
-  float pressure = root["main"]["pressure"];
-  float sunrise = root["sys"]["sunrise"];
-  float sunset = root["sys"]["sunset"];
-  float temp_min = root["main"]["temp_min"];
-  float temp_max = root["main"]["temp_max"];
-  float speed = root["wind"]["speed"];
-  float visibility = root["visibility"];
-  float wind_angle = root["wind"]["deg"];
+ 
   weatherDescription = description;
   weatherLocation = location;
   Country = country;
   Temperature = temperature;
-  Humidity = humidity;
-  Pressure = pressure;
-  Sunrise = sunrise;
-  Sunset = sunset;
-  Speed = speed;
-  Temp_min = temp_min;
-  Temp_max = temp_max;
-  Visibility = visibility;
-  Wind_angle = wind_angle;
+  
  }
+
+
 
 void displayWeather(String location,String description)
  {
-  
-  Serial.println(description);
- 
+  Serial.printf("[%d] %s\n", ESP.getFreeHeap(), description.c_str());
  }
