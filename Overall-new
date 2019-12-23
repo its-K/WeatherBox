@@ -100,7 +100,7 @@ const char INDEX_HTML[] =
                 "</div>"
               "</div>"
                "<div class='form-group'>"
-               "<p>!Caution-For new location, apikey and wifi settings only change</p>"
+               "<p><b>!Caution</b>-For new location, apikey and wifi settings only change</p>"
                "<input type='text' name='api' class='form-control' id='inputEmail' placeholder='Api key' />"
                 "<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='City ID' />"
                  "<input type='text' name='wifi' class='form-control' id='inputEmail' placeholder='Wifi name' />"
