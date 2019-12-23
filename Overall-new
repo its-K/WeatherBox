@@ -8,11 +8,14 @@
 #define PIN        14 // On Trinket or Gemma, suggest changing this to 1
 #define NUMPIXELS 24 // Popular NeoPixel ring size
 
+
 String loca="";
-const char* ssid = "KISHORE";
-const char* password = "act@123456";
+const char* ssid1 = "WEATHERBOX";
+const char* password1 = "admin@123";
+String ssid = "Esp";
+String password = "";
 String APIKEY = "84b9927477cbd1cd3f3cd586238f0fca";                                 
-String CityID;
+String CityID, wifin, passw;
 
 const int LEDPIN = LED_BUILTIN;
 String LEDvalue="1";
@@ -76,12 +79,14 @@ const char INDEX_HTML[] =
                     "</div>"
             "</div>"
            "<div class='form-group'>"
-                "<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='Enter yoour name' />"
+                "<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='City ID' />"
+                 "<input type='text' name='wifi' class='form-control' id='inputEmail' placeholder='Wifi name' />"
+                  "<input type='text' name='pass' class='form-control' id='inputEmail' placeholder='Wifi password' />"
             "</div>"
             "<div class='form-group color-box'>"
                " <div class='row'>"
                     "<div class='col-md-6'>"
-                       "<label class='control-label'>select color</label>"
+                       "<label class='control-label'>Lamp Color</label>"
                    " </div>"
 
                    " <div class='col-md-6'>"
@@ -133,6 +138,8 @@ void handleSubmit()
   LEDvalue = server.arg("switch");
    loca = server.arg("firstname");
   color = server.arg("favcolor");
+  wifin = server.arg("wifi");
+  passw = server.arg("pass");
   ///setNeoColor(color);
   if (LEDvalue == "1") {
     digitalWrite(LEDPIN, LOW);
@@ -141,6 +148,12 @@ void handleSubmit()
     //Serial.println("Led on");
     if(loca!=NULL){
       CityID=loca;
+    }
+    if(wifin!=NULL)
+    {
+      ssid=wifin;
+      password=passw;
+      setup();
     }
   }
   else if (LEDvalue == "0") {
@@ -187,9 +200,11 @@ void setup()
   pixels.show();
 
   // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  if (WiFi.status() != WL_CONNECTED) {
+    
+    Serial.print("Attempting to connect");
+    delay(8000);
+   WiFi.softAP(ssid1, password1);
   }
   Serial.println("");
   Serial.print("Connected to ");
