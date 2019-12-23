@@ -159,6 +159,7 @@ void handleSubmit()
   if (LEDvalue == "1") {
     digitalWrite(LEDPIN, LOW);
     Serial.println(loca);
+    Serial.println(apikey);
     server.send(200, "text/html", INDEX_HTML);
     //Serial.println("Led on");
     if((loca!=NULL) && (apikey!=NULL)){
