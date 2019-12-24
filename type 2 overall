@@ -1,0 +1,436 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <ArduinoJson.h>
+#include <Adafruit_NeoPixel.h>
+#include <EEPROM.h>
+
+#define PIN        14 // On Trinket or Gemma, suggest changing this to 1
+#define NUMPIXELS 24 // Popular NeoPixel ring size
+
+String loca,apikey;
+const char* ssid1 = "WEATHERBOX";
+const char* password1 = "admin@123";
+String ssid = "";
+String password = "";
+String APIKEY = "";       //84b9927477cbd1cd3f3cd586238f0fca                          
+String CityID, wifin, passw,fogmode,rainmode;
+
+const int LEDPIN = LED_BUILTIN;
+String LEDvalue="1";
+String color;
+int wi,pa,ap,ct;
+
+
+WiFiClient client;
+char servername[]="api.openweathermap.org";              // remote server we will connect to
+String result;
+int  counter = 10;  
+
+String weatherDescription ="";
+  String weatherLocation = "";
+  String Country;
+  float Temperature;
+    
+MDNSResponder mdns;
+ESP8266WebServer server(80);
+
+const char INDEX_HTML[] =
+"<!DOCTYPE HTML>"
+"<html>"
+"<head>"
+    "<meta name='viewport' content='width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable=0'>"
+    "<title>Weather Box</title>"
+    "<link rel='stylesheet' type='text/css' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css'>"
+   " <link rel='stylesheet' type='text/css' href='https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css'>"
+    "<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+    "<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js'></script>"
+    "<script src='https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js'></script>"
+    "<style>"
+       " body#LoginForm{background-image: url(https://mk0ecommerceplac6hta.kinstacdn.com/wp-content/uploads/2013/12/15-icon-patterns-1549495017.jpg);background-repeat: repeat; background-position: center;}.form-heading{color:#fff;font-size:23px}.panel h2{color:#444444;font-size:18px;margin:0 0 8px}.panel p{color:#777777;font-size:14px;margin-bottom:30px;line-height:24px}.login-form .form-control{background:#f7f7f7 none repeat scroll 0 0;border:1px solid #d4d4d4;border-radius:4px;font-size:14px;height:50px;line-height:50px}.main-div{background:#ffffff none repeat scroll 0 0;border-radius:2px;margin:10px auto 30px;max-width:38%;padding:50px 70px 70px 71px}.login-form .form-group{margin-bottom:10px}.login-form{text-align:center}.forgot a{color:#777777;font-size:14px;text-decoration:underline}.login-form .btn.btn-primary{background:#f0ad4e none repeat scroll 0 0;border-color:#f0ad4e;color:#ffffff;font-size:14px;width:100%;height:50px;line-height:50px;padding:0}.login-form .auto-mode-box label{position:relative;top:5px}.login-form .color-box{margin:30px 0 25px}.login-form .color-box label{padding:0.6px 0}.botto-text{color:#ffffff;font-size:14px;margin:auto}.login-form .btn.btn-primary.reset{background:#ff9900 none repeat scroll 0 0}.back{text-align:left;margin-top:10px}.back a{color:#444444;font-size:13px;text-decoration:none}.switch{position:relative;width:10.5rem;padding:0 1rem;z-index:1;font:inherit}.switch:before{content:' ';position:absolute;left:0;z-index:-1;width:100%;height:3rem;background:#ddd;border-radius:30px}.switch__label{display:inline-block;width:2rem;padding:1rem;text-align:center;cursor:pointer;transition:color 200ms ease-out;color:#ddd}.switch__label:hover{color:#ddd}.switch__indicator{width:4rem;height:4rem;position:absolute;top:-.5rem;left:0;background:blue;border-radius:50%;transition:transform 600ms cubic-bezier(0.02, 0.94, 0.09, 0.97), background 300ms cubic-bezier(0.17, 0.67, 0.14, 1.03);transform:translate3d(1rem, 0, 0)}.switch input#one:checked ~ .switch__indicator{background:green;transform:translate3d(1.2rem, 0, 0)}.switch input#two:checked ~ .switch__indicator{background:red;transform:translate3d(5.5rem, 0, 0)}.switch input#three:checked ~ .switch__indicator{background:PaleVioletRed;transform:translate3d(10.6rem, 0, 0)}.switch input[type='radio']:checked,.switch input[type='radio']:not(:checked){display:none}"
+   " </style>"
+"</head>"
+"<body id='LoginForm'>"
+    "<div class='container'>"
+        "<div class='login-form'>"
+            "<div class='main-div'>"
+                "<div class='panel'>"
+                   " <h2>WEATHERBOX</h2>"
+                  "  <p>Please update your preferences</p>"
+               " </div>"
+                "<form id='Login'>"
+                    "<div class='form-group auto-mode-box'>"
+                       " <div class='row'>"
+                            "<div class='col-md-6'>"
+                                "<label class='control-label'>Auto mode</label>"
+                            "</div>"
+                            "<div class='col-md-6'>"
+                                "<div class='switch'>"
+                                 " <input name='switch' id='one' type='radio' value='1' checked/>"
+                                " <label for='one' class='switch__label'>On</label>"
+                    
+                                  " <input name='switch' id='two' type='radio' value='0' />"
+                                   " <label for='two' class='switch__label'>Off</label>"
+                              
+                                   
+                                        " <div class='switch__indicator' /></div>"
+                             
+                            "</div>"
+                       " </div>"
+                    "</div>"
+            "</div>"
+            "<div class='col-md-6'>"
+               "<label class='control-label'>Fog Mode</label>"
+               "</div>"
+          "<input name='fogmod' type='radio' value='1'>On<BR>"
+                                    "<input name='fogmod' type='radio' value='0'>Off<BR>"
+            "<div class='col-md-6'>"
+               "<label class='control-label'>Rain Mode</label>"
+                "</div>"
+          "<input name='rainmod' type='radio' value='1'>On<BR>"
+                                    "<input name='rainmod' type='radio' value='0'>Off<BR>"
+            "<div class='form-group color-box'>"
+               " <div class='row'>"
+                    "<div class='col-md-6'>"
+                       "<label class='control-label'>Lamp Color</label>"
+                   " </div>"
+
+                   " <div class='col-md-6'>"
+                        "<input id='demo-input' name='favcolor' type='text' value='#333' class='form-control' />"
+                     " </div>"
+                "</div>"
+              "</div>"
+               "<div class='form-group'>"
+               "<p><b>!Caution</b>-For new location, apikey and wifi settings only change</p>"
+               "<input type='text' name='api' class='form-control' id='inputEmail' placeholder='Api key' />"
+                "<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='City ID' />"
+                 "<input type='text' name='wifi' class='form-control' id='inputEmail' placeholder='Wifi name' />"
+                  "<input type='text' name='pass' class='form-control' id='inputEmail' placeholder='Wifi password' />"
+            "</div>"
+           " <button type='submit' class='btn btn-primary'>Update</button>"
+            "</form>"
+       " </div>"
+   " </div>"
+   " </div>"
+   "</div>"
+
+    "<script type='text/javascript'>"
+       " $(function () {"
+             " $('#demo-input').spectrum({"
+                 " color: '#f00',preferredFormat: 'hex', showInput: true"
+                "});"
+           "});"
+    "</script>"
+"</body>"
+
+"</html>";
+
+
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+void handleRoot()
+{
+  if (server.hasArg("switch")) {
+    handleSubmit();
+  }
+  else {
+    server.send(200, "text/html", INDEX_HTML);
+  }
+}
+
+void returnFail(String msg)
+{
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(500, "text/plain", msg + "\r\n");
+}
+
+void handleSubmit()
+{
+  LEDvalue = server.arg("switch");
+   loca = server.arg("firstname");
+  color = server.arg("favcolor");
+  wifin = server.arg("wifi");
+  passw = server.arg("pass");
+  fogmode = server.arg("fogmod");
+  rainmode = server.arg("rainmod");
+  apikey = server.arg("api");
+  ///setNeoColor(color);
+  if (LEDvalue == "1") {
+    digitalWrite(LEDPIN, LOW);
+    Serial.println(loca);
+    Serial.println(apikey);
+    server.send(200, "text/html", INDEX_HTML);
+    //Serial.println("Led on");
+    if((loca!=NULL) && (apikey!=NULL)){
+      CityID=loca;
+      APIKEY=apikey;
+    }
+    if(wifin!=NULL)
+    {
+      ssid=wifin;
+      password=passw;
+      saveCredentials();
+      setup();
+    }
+  }
+  else if (LEDvalue == "0") {
+    Serial.println(color);
+   setNeoColor(color);
+    server.send(200, "text/html", INDEX_HTML);
+  }
+  else {
+    returnFail("Bad LED value");
+  }
+}
+
+void returnOK()
+{
+  server.sendHeader("Connection", "close");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.send(200, "text/plain", "OK\r\n");
+}
+
+void handleNotFound()
+{
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET)?"GET":"POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i=0; i<server.args(); i++){
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
+
+void setup()
+{
+  pinMode(LEDPIN, OUTPUT);
+  digitalWrite(LEDPIN, LOW);
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+  loadCredentials();
+    pixels.begin();
+  pixels.show();
+
+  // Wait for connection
+  if (WiFi.status() != WL_CONNECTED) {
+    
+    Serial.print("Attempting to connect");
+    delay(8000);
+   WiFi.softAP(ssid1, password1);
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  
+
+  if (mdns.begin("esp8266WebForm", WiFi.localIP())) {
+    Serial.println("MDNS responder started");
+  }
+
+  server.on("/", handleRoot);
+  server.onNotFound(handleNotFound);
+
+  server.begin();
+  Serial.print("Connect to http://esp8266WebForm.local or http://");
+  Serial.println(WiFi.localIP());
+    
+
+}
+void loop()
+{
+  server.handleClient();
+   pixels.begin(); 
+   if(LEDvalue == "1") {
+    automode();
+}
+  else if(LEDvalue =="0")
+  {
+    if((fogmode == "1") && (rainmode == "1")) {
+
+      fog();
+      rain();
+    }
+    else if(rainmode == "1"){
+       rain();
+    }
+    else if(fogmode == "1"){
+       rain();
+    }
+  }
+}
+
+void setNeoColor(String value){
+  Serial.print("Setting Neopixel...");
+  // converting Hex to Int
+  Serial.println(color);
+   int number = (int) strtol( &value[1], NULL, 16); 
+  // splitting into three parts
+  int r = number >> 16;
+  int g = number >> 8 & 0xFF;
+  int b = number & 0xFF;
+  // setting whole strip to the given color
+  for(int i=0; i < NUMPIXELS; i++) {
+    pixels.setPixelColor(i, pixels.Color( r, g, b ) );
+  }
+  pixels.show();
+  Serial.println("on.");
+}
+void automode()
+{
+    if(counter == 10)                                 //Get new data every 10 minutes
+    {
+      counter = 0;
+      delay(1000);
+      getWeatherData();
+      delay(1000);
+    }else
+    {
+      counter++;
+      displayWeather(weatherLocation,weatherDescription);
+       delay(1000);
+    }
+    }
+
+ void getWeatherData()                                //client function to send/receive GET request data.
+   {
+    result="";
+   if (client.connect(servername, 80))   
+          {                                         //starts client connection, checks for connection
+          client.println("GET /data/2.5/weather?id="+CityID+"&units=metric&APPID="+APIKEY);
+          client.println("Host: api.openweathermap.org");
+          client.println("User-Agent: ArduinoWiFi/1.1");
+          client.println("Connection: close");
+          client.println();
+          } 
+  else {
+         Serial.println("connection failed");        //error message if no client connect
+          Serial.println();
+       }
+
+  while(client.connected() && !client.available()) 
+  delay(1);                                          //waits for data
+  while (client.connected() || client.available())    
+       {                                             //connected or data available
+         char c = client.read();                     //gets byte from ethernet buffer
+         result = result+c;
+       }
+
+  client.stop();                                      //stop client
+  result.replace('[', ' ');
+  result.replace(']', ' ');
+  
+  Serial.printf("Res:%s\n", result.c_str());
+  delay(500);
+  
+ /////////////////////////////////////////////////
+const size_t capacity = JSON_ARRAY_SIZE(3) + 2 * JSON_OBJECT_SIZE(1) + JSON_OBJECT_SIZE(2) + 3 * JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) + JSON_OBJECT_SIZE(12) + 340;
+DynamicJsonDocument root(capacity);
+deserializeJson(root, result);
+
+  String location = root["name"];
+  String country = root["sys"]["country"];
+  float temperature = root["main"]["temp"];
+  String weather = root["weather"]["main"];
+  String description = root["weather"]["description"];
+ 
+  weatherDescription = description;
+  weatherLocation = location;
+  Country = country;
+  Temperature = temperature;
+  
+ }
+
+
+
+void displayWeather(String location,String description)
+ {
+  Serial.printf("[%d] %s\n", ESP.getFreeHeap(), description.c_str());
+ }
+
+ void fog(){
+            Serial.println("Fog is on");
+            delay(300);
+ }
+ void rain(){
+  Serial.println("Rain is on");
+  delay(300);
+ }
+ 
+ void loadCredentials() {
+  EEPROM.begin(512);
+ for (int i = 0; i < wi; ++i)
+    {
+      ssid += char(EEPROM.read(i));
+      delay(50);
+    }
+ for (int i = wi; i < pa; ++i)
+    {
+      password += char(EEPROM.read(i));
+      delay(50);
+    }
+ for (int i = pa; i < ap; ++i)
+    {
+      APIKEY += char(EEPROM.read(i));
+      delay(50);
+    }
+ for (int i = ap; i < ct; ++i)
+    {
+      CityID += char(EEPROM.read(i));
+      delay(50);
+    }
+    //esid.trim();
+    //Serial.println(ssid.length());
+  Serial.print("SSID: ");
+  Serial.println(ssid);
+
+}
+
+void saveCredentials() {
+  EEPROM.begin(512);
+  wi=ssid.length();
+  pa=password.length();
+  ap=APIKEY.length();
+  ct=CityID.length();
+  Serial.println("writing eeprom ssid:");
+          for (int i = 0; i < ssid.length(); ++i)
+            {
+              EEPROM.write(i, ssid[i]);
+              Serial.print("Wrote:");
+              //Serial.println(ssid[i]);
+            }
+            delay(50);
+             for (int i = wi; i < password.length(); ++i)
+            {
+              EEPROM.write(i, password[i]);
+              Serial.print("Wrote:");
+              //Serial.println(ssid[i]);
+            }
+            delay(50);
+             for (int i= pa; i < APIKEY.length(); ++i)
+            {
+              EEPROM.write(i, APIKEY[i]);
+              Serial.print("Wrote:");
+              //Serial.println(ssid[i]);
+            }
+            delay(50);
+             for (int i= ap; i < CityID.length(); ++i)
+            {
+              EEPROM.write(i, CityID[i]);
+              Serial.print("Wrote:");
+              //Serial.println(ssid[i]);
+            }
+            delay(50);
+            
+            
+}
