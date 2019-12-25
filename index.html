@@ -1,0 +1,290 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta name='viewport' content='width = device-width, initial-scale = 1.0, maximum-scale = 1.0, user-scalable=0'>
+    <title>Weather Box</title>
+    <link rel='stylesheet' type='text/css' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css'>
+    <link rel='stylesheet' type='text/css' href='https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.css'>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+    <script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/spectrum/1.8.0/spectrum.min.js'></script>
+    <style>
+        body#LoginForm {
+            background-image: url(https://mk0ecommerceplac6hta.kinstacdn.com/wp-content/uploads/2013/12/15-icon-patterns-1549495017.jpg);
+            background-repeat: repeat;
+            background-position: center;
+        }
+        
+        .form-heading {
+            color: #fff;
+            font-size: 23px
+        }
+        
+        .panel h2 {
+            color: #444444;
+            font-size: 18px;
+            margin: 0 0 8px
+        }
+        
+        .panel p {
+            color: #777777;
+            font-size: 14px;
+            margin-bottom: 30px;
+            line-height: 24px
+        }
+        
+        .login-form .form-control {
+            background: #f7f7f7 none repeat scroll 0 0;
+            border: 1px solid #d4d4d4;
+            border-radius: 4px;
+            font-size: 14px;
+            height: 50px;
+            line-height: 50px
+        }
+        
+        .main-div {
+            background: #ffffff none repeat scroll 0 0;
+            border-radius: 2px;
+            margin: 10px auto 30px;
+            padding: 50px 70px 70px 71px
+        }
+        
+        .login-form .form-group {
+            margin-bottom: 10px
+        }
+        
+        .login-form {
+            text-align: center
+        }
+        
+        .forgot a {
+            color: #777777;
+            font-size: 14px;
+            text-decoration: underline
+        }
+        
+        .login-form .btn.btn-primary {
+            background: #f0ad4e none repeat scroll 0 0;
+            border-color: #f0ad4e;
+            color: #ffffff;
+            font-size: 14px;
+            width: 100%;
+            height: 50px;
+            line-height: 50px;
+            padding: 0
+        }
+        
+        .login-form .auto-mode-box label {
+            position: relative;
+            top: 5px
+        }
+        
+        .login-form .color-box {
+            margin: 30px 0 25px
+        }
+        
+        .login-form .color-box label {
+            padding: 0.6px 0
+        }
+        
+        .botto-text {
+            color: #ffffff;
+            font-size: 14px;
+            margin: auto
+        }
+        
+        .login-form .btn.btn-primary.reset {
+            background: #ff9900 none repeat scroll 0 0
+        }
+        
+        .switch, .switch2, .switch3, .switch4 {
+            position: relative;
+            width: 10.5rem;
+            padding: 0 1rem;
+            z-index: 1;
+            font: inherit
+        }
+        
+        .switch:before, .switch2:before, .switch3:before {
+            content: ' ';
+            position: absolute;
+            left: 0;
+            z-index: -1;
+            width: 100%;
+            height: 3rem;
+            background: #ddd;
+            border-radius: 30px
+        }
+        
+        .switch__label, .switch__label_2, .switch__label_3 {
+            display: inline-block;
+            width: 2rem;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: color 200ms ease-out;
+            color: #ddd
+        }
+        
+        .switch__label:hover, .switch__label_2:hover, .switch__label_3:hover {
+            color: #ddd
+        }
+        
+        .switch__indicator, .switch__indicator_2, .switch__indicator_3 {
+            width: 4rem;
+            height: 4rem;
+            position: absolute;
+            top: -.5rem;
+            left: 0;
+            background: blue;
+            border-radius: 50%;
+            transition: transform 600ms cubic-bezier(0.02, 0.94, 0.09, 0.97), background 300ms cubic-bezier(0.17, 0.67, 0.14, 1.03);
+            transform: translate3d(1rem, 0, 0)
+        }
+        
+        .switch input#one:checked ~ .switch__indicator, .switch2 input#fog-on:checked ~ .switch__indicator_2, .switch3 input#rain-on:checked ~ .switch__indicator_3 {
+            background: green;
+            transform: translate3d(1.2rem, 0, 0)
+        }
+        
+        .switch input#two:checked ~ .switch__indicator, .switch2 input#fog-off:checked ~ .switch__indicator_2, .switch3 input#rain-off:checked ~ .switch__indicator_3 {
+            background: red;
+            transform: translate3d(5.5rem, 0, 0)
+        }
+        
+        
+        .switch input[type='radio']:checked,
+        .switch input[type='radio']:not(:checked),
+        .switch2 input[type='radio']:checked,
+        .switch2 input[type='radio']:not(:checked),
+        .switch3 input[type='radio']:checked,
+        .switch3 input[type='radio']:not(:checked) {
+            display: none
+        }
+        .submit-button {
+        	    max-width: 250px;
+    margin: 30px auto 0;
+        }
+    </style>
+</head>
+
+<body id='LoginForm'>
+    <div class='container'>
+    	
+        <div class='login-form'>
+            <div class='main-div'>
+                <div class='panel'>
+                    <h2>WEATHERBOX</h2>
+                    <p>Please update your preferences</p>
+                </div>
+                <form id='Login'>
+                	<div class="row">
+                  <div class='col-md-6'>
+                  	<div class='form-group api-key-box'>
+                		<input type='text' name='api' class='form-control' id='inputEmail' placeholder='Api key' />
+                  	</div>
+                  	<div class='form-group city-box'>
+                		<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='City ID' />
+                  	</div>
+                  	<div class='form-group wifi-name-box'>
+                		<input type='text' name='wifi' class='form-control' id='inputEmail' placeholder='Wifi name' />
+                  	</div>
+                  	<div class='form-group wifi-pwd-box'>
+                		<input type='text' name='pass' class='form-control' id='inputEmail' placeholder='Wifi password' />
+                  	</div>
+                  </div>
+                  <div class='col-md-6'>
+                  	  <div class='form-group auto-mode-box'>
+                        <div class='row'>
+                            <div class='col-md-6'>
+                                <label class='control-label'>Auto mode</label>
+                            </div>
+                            <div class='col-md-6'>
+                                <div class='switch'>
+                                    <input name='switch' id='one' type='radio' value='1' checked/>
+                                    <label for='one' class='switch__label'>On</label>
+                                    <input name='switch' id='two' type='radio' value='0' />
+                                    <label for='two' class='switch__label'>Off</label>
+                                    <div class='switch__indicator' /></div>
+                            </div>
+                        </div>
+                    </div>
+            	</div>
+            	<div class='form-group fog-mode-box'>
+                        <div class='row'>
+                            <div class='col-md-6'>
+                                <label class='control-label'>Fog Mode</label>
+                            </div>
+                            <div class='col-md-6'>
+                                <div class='switch2'>
+                                    <input name='fogmod' id='fog-on' type='radio' value='1' checked/>
+                                    <label for='fog-on' class='switch__label_2'>On</label>
+                                    <input name='fogmod' id='fog-off' type='radio' value='0' />
+                                    <label for='fog-off' class='switch__label_2'>Off</label>
+                                    <div class='switch__indicator_2' /></div>
+                            </div>
+                        </div>
+                    </div>
+            	</div>
+            	<div class='form-group rain-mode-box'>
+                        <div class='row'>
+                            <div class='col-md-6'>
+                                <label class='control-label'>Rain Mode</label>
+                            </div>
+                            <div class='col-md-6'>
+                                <div class='switch3'>
+                                    <input name='rainmod' id='rain-on' type='radio' value='1' checked/>
+                                    <label for='rain-on' class='switch__label'>On</label>
+                                    <input name='rainmod' id='rain-off' type='radio' value='0' />
+                                    <label for='rain-off' class='switch__label_3'>Off</label>
+                                    <div class='switch__indicator_3' /></div>
+                            </div>
+                        </div>
+                    </div>
+            	</div>
+            	            <div class='form-group color-box'>
+                <div class='row'>
+                    <div class='col-md-6'>
+                        <label class='control-label'>Lamp Color</label>
+                    </div>
+                    <div class='col-md-6'>
+                    	<div class="switch4">
+                        <input id='demo-input' name='favcolor' type='text' value='#333' class='form-control' /> 
+                    </div>
+                    </div>
+                </div>
+            </div>
+                  </div>
+              </div>
+              <div class="row">
+              	<div class="col-md-12">
+              		            <div class='form-group submit-box'>
+            	<div class='row'>
+                    <div class='col-md-12	'>
+                    	<div class="submit-button">
+            <button type='submit' class='btn btn-primary'>Update</button>
+        </div>
+        </div></div>
+        </div>
+              	</div>
+              </div>
+            </form>
+        </div>
+    </div>
+    </div>
+    </div>
+    <footer>
+        <script type='text/javascript'>
+            $(function() {
+                $('#demo-input').spectrum({
+                    color: '#f00',
+                    preferredFormat: 'hex',
+                    showInput: true
+                });
+            });
+        </script>
+    </footer>
+</body>
+
+</html>
