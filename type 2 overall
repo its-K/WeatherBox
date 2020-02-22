@@ -1,41 +1,40 @@
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
+#include <WiFiClient.h>
 #include <Adafruit_NeoPixel.h>
 #include <EEPROM.h>
-
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+// WiFi Parameters
 #define PIN        14 // On Trinket or Gemma, suggest changing this to 1
 #define NUMPIXELS 24 // Popular NeoPixel ring size
-
-String loca,apikey;
+String ssid = "kKISHORE";
+String password = "act@123456";
 const char* ssid1 = "WEATHERBOX";
 const char* password1 = "admin@123";
-String ssid = "";
-String password = "";
-String APIKEY = "";       //84b9927477cbd1cd3f3cd586238f0fca                          
-String CityID, wifin, passw,fogmode,rainmode;
+const char* deviceid = "1234";
+const char* host = "http://eaten.000webhostapp.com/authentication/status.php?id=";
+const char* pass = "kise";
+int id,mode,rain,fog;
+String str,api,loca,light;
+String wifin,sspass;
 
-const int LEDPIN = LED_BUILTIN;
-String LEDvalue="1";
-String color;
-int wi,pa,ap,ct;
 
 
 WiFiClient client;
 char servername[]="api.openweathermap.org";              // remote server we will connect to
 String result;
-int  counter = 10;  
+int  counter = 10,refresh=5;  
 
 String weatherDescription ="";
   String weatherLocation = "";
   String Country;
   float Temperature;
-    
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
 MDNSResponder mdns;
 ESP8266WebServer server(80);
-
 const char INDEX_HTML[] =
 "<!DOCTYPE HTML>"
 "<html>"
@@ -62,49 +61,10 @@ const char INDEX_HTML[] =
                 "<form id='Login'>"
                     "<div class='form-group auto-mode-box'>"
                        " <div class='row'>"
-                            "<div class='col-md-6'>"
-                                "<label class='control-label'>Auto mode</label>"
-                            "</div>"
-                            "<div class='col-md-6'>"
-                                "<div class='switch'>"
-                                 " <input name='switch' id='one' type='radio' value='1' checked/>"
-                                " <label for='one' class='switch__label'>On</label>"
-                    
-                                  " <input name='switch' id='two' type='radio' value='0' />"
-                                   " <label for='two' class='switch__label'>Off</label>"
-                              
-                                   
-                                        " <div class='switch__indicator' /></div>"
-                             
-                            "</div>"
-                       " </div>"
-                    "</div>"
-            "</div>"
-            "<div class='col-md-6'>"
-               "<label class='control-label'>Fog Mode</label>"
-               "</div>"
-          "<input name='fogmod' type='radio' value='1'>On<BR>"
-                                    "<input name='fogmod' type='radio' value='0'>Off<BR>"
-            "<div class='col-md-6'>"
-               "<label class='control-label'>Rain Mode</label>"
-                "</div>"
-          "<input name='rainmod' type='radio' value='1'>On<BR>"
-                                    "<input name='rainmod' type='radio' value='0'>Off<BR>"
-            "<div class='form-group color-box'>"
-               " <div class='row'>"
-                    "<div class='col-md-6'>"
-                       "<label class='control-label'>Lamp Color</label>"
-                   " </div>"
-
-                   " <div class='col-md-6'>"
-                        "<input id='demo-input' name='favcolor' type='text' value='#333' class='form-control' />"
-                     " </div>"
-                "</div>"
-              "</div>"
+                                 " <input  name='switch' id='one' type='hidden' value='1' checked/>"
+                                  " <input name='switch' id='two' type='hidden' value='0' />"
                "<div class='form-group'>"
                "<p><b>!Caution</b>-For new location, apikey and wifi settings only change</p>"
-               "<input type='text' name='api' class='form-control' id='inputEmail' placeholder='Api key' />"
-                "<input type='text' name='firstname' class='form-control' id='inputEmail' placeholder='City ID' />"
                  "<input type='text' name='wifi' class='form-control' id='inputEmail' placeholder='Wifi name' />"
                   "<input type='text' name='pass' class='form-control' id='inputEmail' placeholder='Wifi password' />"
             "</div>"
@@ -114,22 +74,9 @@ const char INDEX_HTML[] =
    " </div>"
    " </div>"
    "</div>"
-
-    "<script type='text/javascript'>"
-       " $(function () {"
-             " $('#demo-input').spectrum({"
-                 " color: '#f00',preferredFormat: 'hex', showInput: true"
-                "});"
-           "});"
-    "</script>"
 "</body>"
 
 "</html>";
-
-
-
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
 void handleRoot()
 {
   if (server.hasArg("switch")) {
@@ -139,48 +86,24 @@ void handleRoot()
     server.send(200, "text/html", INDEX_HTML);
   }
 }
-
 void returnFail(String msg)
 {
   server.sendHeader("Connection", "close");
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(500, "text/plain", msg + "\r\n");
 }
-
 void handleSubmit()
 {
-  LEDvalue = server.arg("switch");
-   loca = server.arg("firstname");
-  color = server.arg("favcolor");
   wifin = server.arg("wifi");
-  passw = server.arg("pass");
-  fogmode = server.arg("fogmod");
-  rainmode = server.arg("rainmod");
-  apikey = server.arg("api");
-  ///setNeoColor(color);
-  if (LEDvalue == "1") {
-    digitalWrite(LEDPIN, LOW);
-    Serial.println(loca);
-    Serial.println(apikey);
-    server.send(200, "text/html", INDEX_HTML);
-    //Serial.println("Led on");
-    if((loca!=NULL) && (apikey!=NULL)){
-      CityID=loca;
-      APIKEY=apikey;
-    }
+  sspass = server.arg("pass");
     if(wifin!=NULL)
     {
       ssid=wifin;
-      password=passw;
+      password=sspass;
       saveCredentials();
       setup();
     }
-  }
-  else if (LEDvalue == "0") {
-    Serial.println(color);
-   setNeoColor(color);
-    server.send(200, "text/html", INDEX_HTML);
-  }
+ 
   else {
     returnFail("Bad LED value");
   }
@@ -192,7 +115,6 @@ void returnOK()
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "text/plain", "OK\r\n");
 }
-
 void handleNotFound()
 {
   String message = "File Not Found\n\n";
@@ -209,32 +131,48 @@ void handleNotFound()
   server.send(404, "text/plain", message);
 }
 
-void setup()
-{
-  pinMode(LEDPIN, OUTPUT);
-  digitalWrite(LEDPIN, LOW);
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  Serial.println("");
-  loadCredentials();
-    pixels.begin();
-  pixels.show();
-
-  // Wait for connection
-  if (WiFi.status() != WL_CONNECTED) {
-    
-    Serial.print("Attempting to connect");
-    delay(8000);
-   WiFi.softAP(ssid1, password1);
+ void loadCredentials() {
+  EEPROM.begin(512);
+  EEPROM.get(0, ssid);
+  EEPROM.get(0+sizeof(ssid), password);
+  char ok[2+1];
+  EEPROM.get(0+sizeof(ssid)+sizeof(password), ok);
+  EEPROM.end();
+  if (String(ok) != String("OK")) {
+    ssid[0] = 0;
+    password[0] = 0;
   }
-  Serial.println("");
-  Serial.print("Connected to ");
+  Serial.println("Recovered credentials:");
   Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  
+//  Serial.println(strlen(password)>0?"********":"<no password>");
+}
 
-  if (mdns.begin("esp8266WebForm", WiFi.localIP())) {
+void saveCredentials() {
+  EEPROM.begin(512);
+  EEPROM.put(0, ssid);
+  EEPROM.put(0+sizeof(ssid), password);
+  char ok[2+1] = "OK";
+  EEPROM.put(0+sizeof(ssid)+sizeof(password), ok);
+  EEPROM.commit();
+  EEPROM.end();
+}
+void setup() {
+  Serial.begin(115200);
+  loadCredentials();
+   pixels.begin();
+  pixels.show();
+  WiFi.begin(ssid, password);
+ pinMode(4,OUTPUT);
+ pinMode(13,OUTPUT);
+  if (WiFi.status() != WL_CONNECTED) {
+    delay(10000);
+    WiFi.softAP(ssid1, password1);
+    Serial.println("Connecting...");
+  }
+    if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Connected");
+        }
+          if (mdns.begin("esp8266WebForm", WiFi.localIP())) {
     Serial.println("MDNS responder started");
   }
 
@@ -242,38 +180,45 @@ void setup()
   server.onNotFound(handleNotFound);
 
   server.begin();
-  Serial.print("Connect to http://esp8266WebForm.local or http://");
-  Serial.println(WiFi.localIP());
-    
 
 }
-void loop()
-{
-  server.handleClient();
-   pixels.begin(); 
-   if(LEDvalue == "1") {
-    automode();
-}
-  else if(LEDvalue =="0")
+
+
+void loop() {
+  // Check WiFi Status
+server.handleClient();
+  if(refresh==5)
   {
-    if((fogmode == "1") && (rainmode == "1")) {
-
-      fog();
-      rain();
-    }
-    else if(rainmode == "1"){
-       rain();
-    }
-    else if(fogmode == "1"){
-       rain();
-    }
+        web();
+        refresh=0;
   }
+  refresh++;
+         if(mode==1)
+    {
+      automode();
+    }
+    else if(mode==0){
+      setNeoColor(light);
+     if (fog==1){
+        fogmode();
+      }
+     if (rain==1){
+        rainmode();
+      }
+     if (fog==0){
+        digitalWrite(13,LOW);
+      }
+     if(rain==0){
+        digitalWrite(4,LOW);
+      }
+    }
+  
+  delay(200);
 }
-
 void setNeoColor(String value){
   Serial.print("Setting Neopixel...");
   // converting Hex to Int
-  Serial.println(color);
+  Serial.println(light);
    int number = (int) strtol( &value[1], NULL, 16); 
   // splitting into three parts
   int r = number >> 16;
@@ -282,10 +227,47 @@ void setNeoColor(String value){
   // setting whole strip to the given color
   for(int i=0; i < NUMPIXELS; i++) {
     pixels.setPixelColor(i, pixels.Color( r, g, b ) );
+    delay(100);
+    pixels.show();
   }
-  pixels.show();
+  
   Serial.println("on.");
 }
+
+void web()
+{
+HTTPClient http;  //Object of class HTTPClient
+    str=host;
+    str += deviceid;
+    str += "&pass=";
+     str += pass;
+   
+      http.begin(str);
+    int httpCode = http.GET();
+    //Check the returning code                                                                  
+    if (httpCode > 0) {
+      // Parsing
+      const size_t bufferSize = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(8) + 370;
+      DynamicJsonDocument  jsonBuffer(bufferSize);
+      deserializeJson(jsonBuffer, http.getString());
+      id = jsonBuffer["id"]; // 1
+      api = jsonBuffer["api"].as<String>();
+      light = jsonBuffer["light"].as<String>(); 
+      mode = jsonBuffer["mode"];
+      rain = jsonBuffer["rain"];
+      fog = jsonBuffer["fog"];
+      loca = jsonBuffer["location"].as<String>();
+      Serial.print("ID:");
+      Serial.println(id);
+      Serial.print("Status:");
+      Serial.println(api);
+      Serial.println(light);
+      Serial.println(mode);
+    }
+     http.end();
+      }
+
+   
 void automode()
 {
     if(counter == 10)                                 //Get new data every 10 minutes
@@ -307,7 +289,7 @@ void automode()
     result="";
    if (client.connect(servername, 80))   
           {                                         //starts client connection, checks for connection
-          client.println("GET /data/2.5/weather?id="+CityID+"&units=metric&APPID="+APIKEY);
+          client.println("GET /data/2.5/weather?id="+loca+"&units=metric&APPID="+api);
           client.println("Host: api.openweathermap.org");
           client.println("User-Agent: ArduinoWiFi/1.1");
           client.println("Connection: close");
@@ -356,81 +338,21 @@ deserializeJson(root, result);
 void displayWeather(String location,String description)
  {
   Serial.printf("[%d] %s\n", ESP.getFreeHeap(), description.c_str());
+  if(weatherDescription="rin"){
+    rainmode();
+  }
+  else{
+    fogmode();
+  }
  }
 
- void fog(){
+ void fogmode(){
             Serial.println("Fog is on");
+            digitalWrite(13,HIGH);
             delay(300);
  }
- void rain(){
+ void rainmode(){
   Serial.println("Rain is on");
+  digitalWrite(4,HIGH);
   delay(300);
  }
- 
- void loadCredentials() {
-  EEPROM.begin(512);
- for (int i = 0; i < wi; ++i)
-    {
-      ssid += char(EEPROM.read(i));
-      delay(50);
-    }
- for (int i = wi; i < pa; ++i)
-    {
-      password += char(EEPROM.read(i));
-      delay(50);
-    }
- for (int i = pa; i < ap; ++i)
-    {
-      APIKEY += char(EEPROM.read(i));
-      delay(50);
-    }
- for (int i = ap; i < ct; ++i)
-    {
-      CityID += char(EEPROM.read(i));
-      delay(50);
-    }
-    //esid.trim();
-    //Serial.println(ssid.length());
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-
-}
-
-void saveCredentials() {
-  EEPROM.begin(512);
-  wi=ssid.length();
-  pa=password.length();
-  ap=APIKEY.length();
-  ct=CityID.length();
-  Serial.println("writing eeprom ssid:");
-          for (int i = 0; i < ssid.length(); ++i)
-            {
-              EEPROM.write(i, ssid[i]);
-              Serial.print("Wrote:");
-              //Serial.println(ssid[i]);
-            }
-            delay(50);
-             for (int i = wi; i < password.length(); ++i)
-            {
-              EEPROM.write(i, password[i]);
-              Serial.print("Wrote:");
-              //Serial.println(ssid[i]);
-            }
-            delay(50);
-             for (int i= pa; i < APIKEY.length(); ++i)
-            {
-              EEPROM.write(i, APIKEY[i]);
-              Serial.print("Wrote:");
-              //Serial.println(ssid[i]);
-            }
-            delay(50);
-             for (int i= ap; i < CityID.length(); ++i)
-            {
-              EEPROM.write(i, CityID[i]);
-              Serial.print("Wrote:");
-              //Serial.println(ssid[i]);
-            }
-            delay(50);
-            
-            
-}
