@@ -1,2 +1,2 @@
 # WeatherBox
-A physical weather forecaster and a smart lamp.Much more
+A physical weather forecaster and a smart lamp. Much more coming soon....
